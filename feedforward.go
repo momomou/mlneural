@@ -85,8 +85,8 @@ func (nn *FeedForward) SetContexts(nContexts int, initValues [][]float64) {
 }
 
 /*
+Forward Propagation
 The Update method is used to activate the Neural Network.
-
 Given an array of inputs, it returns an array, of length equivalent of number of outputs, with values ranging from 0 to 1.
 */
 func (nn *FeedForward) Update(inputs []float64) []float64 {
@@ -95,6 +95,7 @@ func (nn *FeedForward) Update(inputs []float64) []float64 {
 	}
 
 	for i := 0; i < nn.NInputs-1; i++ {
+		//fmt.Printf("nn.InputActivations[%d]: %f -> %f \n", i, nn.InputActivations[i], inputs[i])
 		nn.InputActivations[i] = inputs[i]
 	}
 
@@ -112,6 +113,7 @@ func (nn *FeedForward) Update(inputs []float64) []float64 {
 			}
 		}
 
+		//fmt.Printf("nn.HiddenActivations[%d]: %f -> %f, sum: %f\n", i, nn.HiddenActivations[i], sigmoid(sum), sum)
 		nn.HiddenActivations[i] = sigmoid(sum)
 	}
 
@@ -129,6 +131,7 @@ func (nn *FeedForward) Update(inputs []float64) []float64 {
 			sum += nn.HiddenActivations[j] * nn.OutputWeights[j][i]
 		}
 
+		//fmt.Printf("nn.OutputActivations[%d]: %f -> %f, sum: %f\n", i, nn.OutputActivations[i], sigmoid(sum), sum)
 		nn.OutputActivations[i] = sigmoid(sum)
 	}
 
@@ -145,7 +148,10 @@ func (nn *FeedForward) BackPropagate(targets []float64, lRate, mFactor float64) 
 
 	outputDeltas := vector(nn.NOutputs, 0.0)
 	for i := 0; i < nn.NOutputs; i++ {
-		outputDeltas[i] = dsigmoid(nn.OutputActivations[i]) * (targets[i] - nn.OutputActivations[i])
+		r := dsigmoid(nn.OutputActivations[i]) * (targets[i] - nn.OutputActivations[i])
+		//r2 := nn.OutputActivations[i] - targets[i]
+		//fmt.Printf("outputDeltas[%d]: %f -> %f, r2: %f, target: %f\n", i, outputDeltas[i], r, r2, targets[i])
+		outputDeltas[i] = r
 	}
 
 	hiddenDeltas := vector(nn.NHiddens, 0.0)
@@ -156,13 +162,18 @@ func (nn *FeedForward) BackPropagate(targets []float64, lRate, mFactor float64) 
 			e += outputDeltas[j] * nn.OutputWeights[i][j]
 		}
 
-		hiddenDeltas[i] = dsigmoid(nn.HiddenActivations[i]) * e
+		r := dsigmoid(nn.HiddenActivations[i]) * e
+		//fmt.Printf("hiddenDeltas[%d]: %f -> %f \n", i, hiddenDeltas[i], r)
+		hiddenDeltas[i] = r
 	}
 
 	for i := 0; i < nn.NHiddens; i++ {
 		for j := 0; j < nn.NOutputs; j++ {
 			change := outputDeltas[j] * nn.HiddenActivations[i]
-			nn.OutputWeights[i][j] = nn.OutputWeights[i][j] + lRate*change + mFactor*nn.OutputChanges[i][j]
+			r := nn.OutputWeights[i][j] + lRate*change + mFactor*nn.OutputChanges[i][j]
+			//fmt.Printf("OutputWeights[%d][%d]: %f -> %f, change: %f, last change: %f \n",
+			//				i, j, nn.OutputWeights[i][j], r, change, nn.OutputChanges[i][j])
+			nn.OutputWeights[i][j] = r
 			nn.OutputChanges[i][j] = change
 		}
 	}
@@ -170,7 +181,10 @@ func (nn *FeedForward) BackPropagate(targets []float64, lRate, mFactor float64) 
 	for i := 0; i < nn.NInputs; i++ {
 		for j := 0; j < nn.NHiddens; j++ {
 			change := hiddenDeltas[j] * nn.InputActivations[i]
-			nn.InputWeights[i][j] = nn.InputWeights[i][j] + lRate*change + mFactor*nn.InputChanges[i][j]
+			r := nn.InputWeights[i][j] + lRate*change + mFactor*nn.InputChanges[i][j]
+			//fmt.Printf("InputWeights[%d][%d]: %f -> %f, change: %f, last change: %f \n",
+			//				i, j, nn.InputWeights[i][j], r, change, nn.InputChanges[i][j])
+			nn.InputWeights[i][j] = r
 			nn.InputChanges[i][j] = change
 		}
 	}
@@ -192,6 +206,7 @@ func (nn *FeedForward) Train(patterns [][][]float64, iterations int, lRate, mFac
 
 	for i := 0; i < iterations; i++ {
 		var e float64
+		//fmt.Printf("Iteration #%d \n", i)
 		for _, p := range patterns {
 			nn.Update(p[0])
 
@@ -201,7 +216,7 @@ func (nn *FeedForward) Train(patterns [][][]float64, iterations int, lRate, mFac
 
 		errors[i] = e
 
-		if debug && i%1000 == 0 {
+		if debug && i%100 == 0 {
 			fmt.Println(i, e)
 		}
 	}
